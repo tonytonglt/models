@@ -19,16 +19,23 @@ from .resnet50v1 import ResidualBlockUsing_V1
 from .bbox_assign_sample import BboxAssignSample
 from .bbox_assign_sample_stage2 import BboxAssignSampleForRcnn
 from .fpn_neck import FeatPyramidNeck
-from .proposal_generator import Proposal
+# from .proposal_generator import Proposal
 from .rcnn import Rcnn
 from .rpn import RPN
 from .roi_align import SingleRoIExtractor
 from .anchor_generator import AnchorGenerator
 from .inceptionresnetv2 import InceptionResNetV2
 
+# __all__ = [
+#     "ResNetFea", "BboxAssignSample", "BboxAssignSampleForRcnn",
+#     "FeatPyramidNeck", "Proposal", "Rcnn",
+#     "RPN", "SingleRoIExtractor", "AnchorGenerator", "ResidualBlockUsing", "ResidualBlockUsing_V1",
+#     "InceptionResNetV2"
+# ]
+
 __all__ = [
     "ResNetFea", "BboxAssignSample", "BboxAssignSampleForRcnn",
-    "FeatPyramidNeck", "Proposal", "Rcnn",
+    "FeatPyramidNeck", "Rcnn",
     "RPN", "SingleRoIExtractor", "AnchorGenerator", "ResidualBlockUsing", "ResidualBlockUsing_V1",
     "InceptionResNetV2"
 ]
