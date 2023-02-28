@@ -37,11 +37,11 @@ class RCNNBox(object):
                                          ms.Tensor((rois_num_per_im.asnumpy().item(), 2)))
             origin_shape_list.append(expand_im_shape)
 
-        origin_shape = ops.cat(origin_shape_list)
+        origin_shape = ops.concat(origin_shape_list)
 
         # bbox_pred.shape: [N, C*4]
         # C=num_classes in faster/mask rcnn(bbox_head), C=1 in cascade rcnn(cascade_head)
-        bbox = ops.cat(roi)
+        bbox = ops.concat(roi)
         bbox = delta2bbox(bbox_pred, bbox, self.prior_box_var)
         scores = cls_prob[:, :-1]
 
@@ -98,8 +98,8 @@ def delta2bbox(deltas, boxes, weights):
     dw = deltas[:, 2::4] / ww
     dh = deltas[:, 3::4] / wh
     # Prevent sending too large values into paddle.exp()
-    dw = dw.clip(max=clip_scale)
-    dh = dh.clip(max=clip_scale)
+    dw = dw.clip(xmax=clip_scale, xmin=None)
+    dh = dh.clip(xmax=clip_scale, xmin=None)
 
     pred_ctr_x = dx * widths.unsqueeze(1) + ctr_x.unsqueeze(1)
     pred_ctr_y = dy * heights.unsqueeze(1) + ctr_y.unsqueeze(1)
@@ -176,7 +176,7 @@ def multiclass_nms(multi_bboxes,
     bboxes, scores, labels = bboxes[inds], scores[inds], labels[inds]
 
     if bboxes.numel() == 0:
-        dets = ops.cat([bboxes, scores[:, None]], -1)
+        dets = ops.concat([bboxes, scores[:, None]], -1)
         if return_inds:
             return dets, labels, inds
         else:
@@ -191,7 +191,7 @@ def multiclass_nms(multi_bboxes,
     """transfer det to [label_id, score, x1, y1, x2, y2]"""
     labels = labels[keep].reshape(-1, 1)
     labels = ms.Tensor(labels, dtype=ms.float32)  # type casting to float32
-    dets = ops.cat((labels, dets), axis=1)
+    dets = ops.concat((labels, dets), axis=1)
     if return_inds:
         return dets, dets.shape[0], inds[keep]
     else:
@@ -262,7 +262,7 @@ def batched_nms(boxes,
     if nms_cfg is None:
         scores, inds = scores.sort(descending=True)
         boxes = boxes[inds]
-        return ops.cat([boxes, scores[:, None]], -1), inds
+        return ops.concat([boxes, scores[:, None]], -1), inds
 
     nms_cfg_ = nms_cfg.copy()
     class_agnostic = nms_cfg_.pop('class_agnostic', class_agnostic)
@@ -282,7 +282,7 @@ def batched_nms(boxes,
             offsets = idxs.to(boxes.dtype) * (
                 max_coordinate + ms.Tensor(1).to(boxes.dtype))
             boxes_ctr_for_nms = boxes[..., :2] + offsets[:, None]
-            boxes_for_nms = ops.cat([boxes_ctr_for_nms, boxes[..., 2:5]],
+            boxes_for_nms = ops.concat([boxes_ctr_for_nms, boxes[..., 2:5]],
                                     axis=-1)
         else:
             max_coordinate = boxes.max()
@@ -314,7 +314,7 @@ def batched_nms(boxes,
         for id in unique_idxs:
             mask = (idxs == id).nonzero().reshape(-1)
             nms_op = ops.NMSWithMask(iou_threshold=nms_threshold)
-            bbox_with_scores = ops.cat((boxes_for_nms[mask], scores[mask].reshape(-1, 1)), axis=1)
+            bbox_with_scores = ops.concat((boxes_for_nms[mask], scores[mask].reshape(-1, 1)), axis=1)
             ordered_box, ordered_idx, valid_mask = nms_op(bbox_with_scores)
             # dets, keep = nms_op(boxes_for_nms[mask], scores[mask], **nms_cfg_)
             keep = ms.Tensor(ordered_idx.asnumpy()[valid_mask.asnumpy()], dtype=ms.int32)
@@ -332,7 +332,7 @@ def batched_nms(boxes,
             boxes = boxes[:max_num]
             scores = scores[:max_num]
 
-    boxes = ops.cat([scores[:, None], boxes], -1)
+    boxes = ops.concat([scores[:, None], boxes], -1)
     return boxes, keep
 
 

@@ -37,7 +37,8 @@ class RoIAlign(object):
         return {'spatial_scale': [1. / i.stride for i in input_shape]}
 
     def __call__(self, feats, roi, rois_num):
-        roi = ops.cat(roi) if len(roi) > 1 else roi[0]  # roi: Tensor(shape = [1000, 4], dtype=float32)
+        roi = ops.concat(roi) if len(roi) > 1 else roi[0]  # roi: Tensor(shape = [1000, 4], dtype=float32)
+        # roi = roi[:1]
         if len(feats) == 1:  # w/o. FPN
             roi_align = ops.ROIAlign(pooled_height=self.resolution,
                                      pooled_width=self.resolution,
@@ -46,8 +47,8 @@ class RoIAlign(object):
                                      roi_end_mode=1)  # params: (pooled_height, pooled_width, spatial_scale, sample_num=2, roi_end_mode=1)
             # TODO: rois shape convert to [rois_n,5], rois_n 为RoI的数量。第二个维度的大小必须为 5 ，分别代表 (image_index,top_left_x,top_left_y,bottom_right_x,bottom_right_y)
             # idx = ops.arange(0, roi.shape[0], dtype=ms.float32).unsqueeze(1)
-            idx = ops.zeros((roi.shape[0], 1), dtype=ms.float32)
-            rois = ops.cat((idx, roi), axis=1)
+            idx = ops.zeros((roi.shape[0], 1), ms.float32)
+            rois = ops.concat((idx, roi), axis=1)
             rois_feat = roi_align(feats[0], rois)  # params(features, rois) features (Tensor) - 输入特征，shape: (N,C,H,W), rois - shape: (rois_n,5)
             # roi_align paddle实现
             # rois_feat = paddle.vision.ops.roi_align(

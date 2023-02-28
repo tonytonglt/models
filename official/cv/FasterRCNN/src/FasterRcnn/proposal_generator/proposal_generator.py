@@ -123,7 +123,7 @@ class ProposalGenerator(object):
             B = anchors_i.shape[-1]
             pred_anchor_deltas_i = pred_anchor_deltas_i.reshape(-1, B)
             # Expand anchors to shape (N*Hi*Wi*A, B)
-            anchors_i = anchors_i.unsqueeze(0).expand(ms.Tensor((N, -1, -1), dtype=ms.int32)).reshape([-1, B])
+            # anchors_i = anchors_i.unsqueeze(0).expand(ms.Tensor((N, -1, -1), dtype=ms.int32)).reshape([-1, B])
             proposals_i = delta2bbox(pred_anchor_deltas_i, anchors_i, [10., 10., 5., 5.])  # [10., 10., 5., 5.]
             # Append feature map proposals with shape (N, Hi*Wi*A, B)
             proposals.append(proposals_i.reshape(N, -1, B))
@@ -149,18 +149,18 @@ class ProposalGenerator(object):
         for level_id, (proposals_i, logits_i) in enumerate(zip(proposals, pred_objectness_logits)):
             Hi_Wi_A = logits_i.shape[1]
             if isinstance(Hi_Wi_A, ms.Tensor):  # it's a tensor in tracing
-                num_proposals_i = ops.clip(Hi_Wi_A, max=pre_nms_topk)
+                num_proposals_i = Hi_Wi_A.clip(xmin=None, xmax=pre_nms_topk)
             else:
                 num_proposals_i = min(Hi_Wi_A, pre_nms_topk)
 
-            topk_scores_i, topk_idx = ops.topk(logits_i, num_proposals_i, dim=1)
+            topk_scores_i, topk_idx = ops.top_k(logits_i, num_proposals_i, dim=1)
 
             # each is N x topk
             # topk_proposals_i = proposals_i[batch_idx[:, None], topk_idx]  # N x topk x 4
             topk_proposals_i = ops.gather(proposals_i.squeeze(0), topk_idx[0], axis=0).unsqueeze(0)  # N x topk x 4
             topk_proposals.append(topk_proposals_i)
             topk_scores.append(topk_scores_i)
-            level_ids.append(ops.full((num_proposals_i,), level_id))
+            level_ids.append(ms.numpy.full((num_proposals_i,), level_id))
 
         # 2. Concat all levels together
         topk_scores = ops.concat(topk_scores, axis=1)
@@ -184,7 +184,10 @@ class ProposalGenerator(object):
             # filter empty boxes
             keep = boxes.nonempty(threshold=min_box_size)  # TODO: attention!!!! 可能会有全部为0的情况
             if keep.sum() != len(boxes):
-                boxes = ms.Tensor(boxes.tensor.asnumpy()[keep.asnumpy()], dtype=ms.float32)
+                # print(boxes.tensor.asnumpy()[keep.asnumpy()])
+                if boxes.tensor.asnumpy()[keep.asnumpy()] == []:
+                    print()
+                boxes.tensor = ms.Tensor(boxes.tensor.asnumpy()[keep.asnumpy()], dtype=ms.float32)
                 scores_per_img = ms.Tensor(scores_per_img.asnumpy()[keep.asnumpy()], dtype=ms.float32)
                 lvl = ms.Tensor(lvl.asnumpy()[keep.asnumpy()], dtype=ms.float32)
                 # boxes, scores_per_img, lvl = boxes[keep], scores_per_img[keep], lvl[keep]

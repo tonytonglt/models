@@ -9,9 +9,8 @@ from src.FasterRcnn.resnet_from_mindcv import Res5Head
 from src.FasterRcnn.resnet_from_mindcv import build_resnet50_for_fasterrcnn
 from bbox_postprocess import BBoxPostProcess
 
-import mindcv
-
-import paddle
+# import paddle
+import numpy as np
 
 
 
@@ -41,6 +40,13 @@ class FasterRCNN(nn.Cell):
         if self.neck is not None:
             body_feats = self.neck(body_feats)
         if self.training:
+            body_feats = ops.ones((1, 1024, 40, 37), type=ms.float32)
+            self.input['image'] = np.ones((1, 640, 586, 3), dtype=np.int32)
+            self.inputs['w'] = np.array([640], dtype=np.float32)
+            self.inputs['h'] = np.array([586], dtype=np.float32)
+            self.inputs['gt_bbox'] = np.array([[[378.32, 142.51, 403.02, 212.01]]], dtype=np.float32)
+            self.inputs['gt_class'] = np.array([[[21]]], dtype=np.int32)
+
             rois, rois_num, rpn_loss = self.rpn_head(body_feats, self.inputs)
             bbox_loss, _ = self.bbox_head(body_feats, rois, rois_num,
                                           self.inputs)
@@ -101,9 +107,13 @@ def build_fasterrcnn_model(training=True):
     # backbone = mindcv.create_model('resnet50', pretrained=False)
     backbone = build_resnet50_for_fasterrcnn()
     rpn_head = RPNHead()
+    ms.load_checkpoint('C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.rpnhead.ckpt'
+                       , rpn_head)
     bbox_assigner = BBoxAssigner()
     head = Res5Head(depth=50)
     bbox_head = BboxHead(head=head, bbox_assigner=bbox_assigner, in_channel=2048, with_pool=True)
+    ms.load_checkpoint('C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.bboxhead.ckpt'
+                       , bbox_head)
     fasterrcnn = FasterRCNN(backbone, rpn_head, bbox_head, training=training)
     return fasterrcnn
 

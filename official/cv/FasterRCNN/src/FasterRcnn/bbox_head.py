@@ -65,11 +65,17 @@ class BboxHead(nn.Cell):
             self.assigned_targets = targets
 
         body_feats = [body_feats]
+
         rois_feat = self.roi_extractor(body_feats, rois, rois_num)  # body feats need to be list
+
+        rois_feat = ops.ones((512, 1024, 14, 14), ms.float32)
+
         bbox_feat = self.head(rois_feat)
+
+
         if self.with_pool:
-            # pool = nn.AdaptiveAvgPool2d(output_size=1)  # only supported on GPU, use avgpool for testing
-            pool = nn.AvgPool2d(kernel_size=7, stride=1)
+            pool = nn.AdaptiveAvgPool2d(output_size=1)  # only supported on GPU, use avgpool for testing
+            # pool = nn.AvgPool2d(kernel_size=7, stride=1)
             feat = pool(bbox_feat)
             feat = feat.squeeze(axis=(2, 3))
         else:
@@ -112,7 +118,7 @@ class BboxHead(nn.Cell):
         tgt_labels, tgt_bboxes, tgt_gt_inds = targets
 
         # bbox cls
-        tgt_labels = ops.cat(tgt_labels) if len(
+        tgt_labels = ops.concat(tgt_labels) if len(
             tgt_labels) > 1 else tgt_labels[0]
         valid_inds = ops.nonzero(tgt_labels >= 0).flatten()
         if valid_inds.shape[0] == 0:
@@ -139,7 +145,7 @@ class BboxHead(nn.Cell):
                             self.num_classes))
 
         if fg_inds.numel() == 0:
-            loss_bbox[reg_name] = ops.zeros(1, dtype=ms.float32)
+            loss_bbox[reg_name] = ops.zeros(1, ms.float32)
             return loss_bbox
 
         fg_inds = fg_inds.flatten()
@@ -155,12 +161,12 @@ class BboxHead(nn.Cell):
             reg_col_inds = 4 * fg_gt_classes.unsqueeze(1) + ops.arange(4)
 
             reg_col_inds = reg_col_inds.reshape((-1, 1))
-            reg_inds = ops.cat([reg_row_inds, reg_col_inds], axis=1)
+            reg_inds = ops.concat([reg_row_inds, reg_col_inds], axis=1)
 
             reg_delta = deltas.gather(fg_inds, axis=0)
             reg_delta = reg_delta.gather_nd(reg_inds).reshape((-1, 4))
-        rois = ops.cat(rois) if len(rois) > 1 else rois[0]
-        tgt_bboxes = ops.cat(tgt_bboxes) if len(tgt_bboxes) > 1 else tgt_bboxes[0]
+        rois = ops.concat(rois) if len(rois) > 1 else rois[0]
+        tgt_bboxes = ops.concat(tgt_bboxes) if len(tgt_bboxes) > 1 else tgt_bboxes[0]
 
         reg_target = bbox2delta(rois, tgt_bboxes, bbox_weight)
         reg_target = reg_target.gather(fg_inds, axis=0)
@@ -220,7 +226,7 @@ class BboxHead(nn.Cell):
         x2 = x2.reshape((-1,))
         y2 = y2.reshape((-1,))
 
-        return ops.cat([x1, y1, x2, y2])
+        return ops.concat([x1, y1, x2, y2])
 
     def get_prediction(self, score, delta):
         bbox_prob = ops.softmax(score)

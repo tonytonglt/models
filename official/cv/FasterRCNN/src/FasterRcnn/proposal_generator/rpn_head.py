@@ -167,8 +167,8 @@ class RPNHead(nn.Cell):
                 rpn_rois_num_list.append(rpn_rois_num)
 
             if len(scores) > 1:
-                rpn_rois = ops.cat(rpn_rois_list)
-                rpn_prob = ops.cat(rpn_prob_list).flatten()
+                rpn_rois = ops.concat(rpn_rois_list)
+                rpn_prob = ops.concat(rpn_prob_list).flatten()
 
                 num_rois = ops.cast(rpn_prob.shape[0], ms.int32)
                 if num_rois > post_nms_top_n:
@@ -184,7 +184,7 @@ class RPNHead(nn.Cell):
             bs_rois_collect.append(topk_rois)
             bs_rois_num_collect.append(ms.Tensor((topk_rois.shape[0], ), dtype=ms.int32))
 
-        bs_rois_num_collect = ops.cat(bs_rois_num_collect)
+        bs_rois_num_collect = ops.concat(bs_rois_num_collect)
 
         output_rois = bs_rois_collect
         output_rois_num = bs_rois_num_collect
@@ -199,7 +199,7 @@ class RPNHead(nn.Cell):
         inputs (dict): ground truth info, including im, gt_bbox, gt_score
         """
         anchors = [a.reshape((-1, 4)) for a in anchors]
-        anchors = ops.cat(anchors)
+        anchors = ops.concat(anchors)
 
         scores = [
             ops.reshape(
@@ -207,7 +207,7 @@ class RPNHead(nn.Cell):
                     v, input_perm=(0, 2, 3, 1)),
                 input_shape=(v.shape[0], -1, 1)) for v in pred_scores
         ]
-        scores = ops.cat(scores, axis=1)
+        scores = ops.concat(scores, axis=1)
 
         deltas = [
             ops.reshape(
@@ -215,7 +215,7 @@ class RPNHead(nn.Cell):
                     v, input_perm=(0, 2, 3, 1)),
                 input_shape=(v.shape[0], -1, 4)) for v in pred_deltas
         ]
-        deltas = ops.cat(deltas, axis=1)
+        deltas = ops.concat(deltas, axis=1)
 
         score_tgt, bbox_tgt, loc_tgt, norm = self.rpn_target_assign(inputs,
                                                                     anchors)
@@ -223,7 +223,7 @@ class RPNHead(nn.Cell):
         scores = scores.reshape(-1, )
         deltas = deltas.reshape(-1, 4)
 
-        score_tgt = ops.cat(score_tgt)
+        score_tgt = ops.concat(score_tgt)
         score_tgt = ops.stop_gradient(score_tgt)
 
         pos_mask = score_tgt == 1
@@ -239,17 +239,17 @@ class RPNHead(nn.Cell):
             score_pred = scores.gather(valid_ind, axis=0)
             score_label = ms.Tensor(score_tgt.gather(valid_ind, axis=0).asnumpy(), dtype=ms.float32)
             score_label = ops.stop_gradient(score_label)
-            weight = ops.ones(score_pred.shape, dtype=ms.float32)
-            pos_weight = ops.ones(score_pred.shape, dtype=ms.float32)
+            weight = ops.ones(score_pred.shape, ms.float32)
+            pos_weight = ops.ones(score_pred.shape, ms.float32)
             loss_rpn_cls = ops.binary_cross_entropy_with_logits(
                 logits=score_pred, label=score_label, weight=weight, pos_weight=pos_weight, reduction="sum")
 
         # reg loss
         if pos_ind.shape[0] == 0:
-            loss_rpn_reg = ops.zeros((1, ), dtype=ms.float32)
+            loss_rpn_reg = ops.zeros((1, ), ms.float32)
         else:
             loc_pred = deltas.gather(pos_ind, axis=0)
-            loc_tgt = ops.cat(loc_tgt)
+            loc_tgt = ops.concat(loc_tgt)
             loc_tgt = loc_tgt.gather(pos_ind, axis=0)
             ops.stop_gradient(loc_tgt)
 

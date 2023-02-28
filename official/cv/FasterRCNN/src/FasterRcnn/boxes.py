@@ -65,10 +65,10 @@ class Boxes:
         """
         # assert torch.isfinite(self.tensor).all(), "Box tensor contains infinite or NaN!"
         h, w = box_size
-        x1 = self.tensor[:, 0].clip(min=0, max=w)
-        y1 = self.tensor[:, 1].clip(min=0, max=h)
-        x2 = self.tensor[:, 2].clip(min=0, max=w)
-        y2 = self.tensor[:, 3].clip(min=0, max=h)
+        x1 = self.tensor[:, 0].clip(xmin=0, xmax=w)
+        y1 = self.tensor[:, 1].clip(xmin=0, xmax=h)
+        x2 = self.tensor[:, 2].clip(xmin=0, xmax=w)
+        y2 = self.tensor[:, 3].clip(xmin=0, xmax=h)
         self.tensor = ops.stack((x1, y1, x2, y2), axis=-1)
 
     def nonempty(self, threshold: float = 0.0):

@@ -39,13 +39,13 @@ if __name__ == '__main__':
     bbox_postprocessing = BBoxPostProcess(decode=rcnnbox, nms=multiclass_nms)
 
 
-    dummy_body_feats = [ops.ones((1, 1024, 50, 80), dtype=ms.float32)]
+    dummy_body_feats = [ops.ones((1, 1024, 50, 80), type=ms.float32)]
     # import numpy as np
     # dummy_body_feats = [ms.Tensor(np.random.randint(0, 10, size=(1, 1024, 50, 80)), dtype=ms.float32)]
     dummy_inputs = {
         'im_id': ms.Tensor([[0]], dtype=ms.int32),
         'curr_iter': ms.Tensor([0], dtype=ms.int32),
-        'image': ops.ones((1, 3, 800, 1267), dtype=ms.float32),
+        'image': ops.ones((1, 3, 800, 1267), type=ms.float32),
         'im_shape': ms.Tensor([[800, 1267.32678223]], dtype=ms.float32),
         'scale_factor': ms.Tensor([[1.98019803, 1.98019803]], dtype=ms.float32)
     }

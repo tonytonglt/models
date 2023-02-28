@@ -102,6 +102,10 @@ class Trainer:
         loss_rpn_reg = rpn_loss['loss_rpn_reg']
         loss_bbox_cls = bbox_loss['loss_bbox_cls']
         loss_bbox_reg = bbox_loss['loss_bbox_reg']
+        if bbox_loss['loss_bbox_reg'].shape == (1,):
+            loss_bbox_reg = loss_bbox_reg.item()
+        if bbox_loss['loss_rpn_reg'].shape == (1,):
+            loss_rpn_reg = loss_rpn_reg.item()
         loss = loss_rpn_cls + loss_rpn_reg + loss_bbox_cls + loss_bbox_reg
         # loss = self.loss_scale.scale(loss)
         return loss, loss_rpn_cls, loss_rpn_reg, loss_bbox_cls, loss_bbox_reg

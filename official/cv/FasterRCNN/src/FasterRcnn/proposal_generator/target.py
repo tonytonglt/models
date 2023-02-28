@@ -29,7 +29,7 @@ def rpn_anchor_target(anchors,
         fg_inds, bg_inds = subsample_labels(match_labels, rpn_batch_size_per_im,
                                             rpn_fg_fraction, 0, use_random)
         # Fill with the ignore label (-1), then set positive and negative labels
-        labels = ops.full(match_labels.shape, -1, dtype=ms.int32)
+        labels = ms.numpy.full(match_labels.shape, -1, dtype=ms.int32)
         if bg_inds.shape[0] > 0:
             labels = ops.tensor_scatter_elements(labels, bg_inds, ops.zeros_like(bg_inds))
         if fg_inds.shape[0] > 0:
@@ -95,24 +95,30 @@ def label_box(anchors,
         # ignore the iou between anchor and crowded ground-truth
         iou = iou * (1 - mask) - mask
 
-    matched_vals, matches = iou.topk(k=1, dim=0)
-    match_labels = ops.full(matches.shape, -1, dtype=ms.int32)
+    iou = iou.transpose()
+    matched_vals, matches = iou.top_k(k=1)
+    matched_vals = matched_vals.transpose()
+    matches = matches.transpose()
+    iou = iou.transpose()
+    match_labels = ms.numpy.full(matches.shape, -1, dtype=ms.int32)
     # set ignored anchor with iou = -1
     neg_cond = ops.logical_and(matched_vals > -1,
                                matched_vals < negative_overlap)
-    match_labels = ops.where(neg_cond,
+    match_labels = ms.numpy.where(neg_cond,
                              ops.zeros_like(match_labels), match_labels)
-    match_labels = ops.where(matched_vals >= positive_overlap,
+    match_labels = ms.numpy.where(matched_vals >= positive_overlap,
                              ops.ones_like(match_labels), match_labels)
     if allow_low_quality:
-        highest_quality_foreach_gt = ops.max(iou, axis=1, keep_dims=True)
+        highest_quality_foreach_gt = ops.max(iou, axis=1, keep_dims=True)[1]
         cast = ops.Cast()
-        pred_inds_with_highest_quality = ops.sum(cast(ops.logical_and(iou > 0, iou == highest_quality_foreach_gt),
-                                                      ms.int32), dim=0, keepdim=True)
+        # pred_inds_with_highest_quality = ops.sum(cast(ops.logical_and(iou > 0, iou == highest_quality_foreach_gt),
+        #                                               ms.int32), dim=0, keepdim=True)
+        pred_inds_with_highest_quality = cast(ops.logical_and(iou > 0, iou == highest_quality_foreach_gt),
+                                              ms.int32).sum(axis=0, keepdims=True)
         # pred_inds_with_highest_quality = ops.logical_and(
         #     iou > 0, iou == highest_quality_foreach_gt).cast('int32').sum(
         #     0, keep_dims=True)
-        match_labels = ops.where(pred_inds_with_highest_quality > 0,
+        match_labels = ms.numpy.where(pred_inds_with_highest_quality > 0,
                                  ops.ones_like(match_labels),
                                  match_labels)
 
@@ -134,14 +140,14 @@ def sample_bbox(matches,
     n_gt = gt_classes.shape[0]
     if n_gt == 0:
         # No truth, assign everything to background
-        gt_classes = ops.ones(matches.shape, dtype=ms.int32) * num_classes
+        gt_classes = ops.ones(matches.shape, ms.int32) * num_classes
         # return matches, match_labels + num_classes
     else:
         gt_classes = gt_classes.gather(matches, axis=0)
-        gt_classes = ops.where(match_labels == 0,
+        gt_classes = ms.numpy.where(match_labels == 0,
                                ops.ones_like(gt_classes) * num_classes,
                                gt_classes)
-        gt_classes = ops.where(match_labels == -1,
+        gt_classes = ms.numpy.where(match_labels == -1,
                                   ops.ones_like(gt_classes) * -1, gt_classes)
     if is_cascade:
         index = ops.arange(matches.shape[0])
@@ -155,7 +161,7 @@ def sample_bbox(matches,
         # foreground nor background
         sampled_inds = ops.zeros([1], dtype='int32')
     else:
-        sampled_inds = ops.cat([fg_inds, bg_inds])
+        sampled_inds = ops.concat([fg_inds, bg_inds])
     sampled_gt_classes = gt_classes.gather(sampled_inds, axis=0)
     return sampled_inds, sampled_gt_classes
 
@@ -179,8 +185,9 @@ def subsample_labels(labels,
         return fg_inds, bg_inds
 
     # randomly select positive and negative examples
-
-    negative = ms.Tensor(negative, dtype=ms.int32).flatten()
+    cast = ops.Cast()
+    negative = cast(negative, ms.int32).flatten()
+    # negative = ms.Tensor(negative, dtype=ms.int32).flatten()
     bg_perm = ops.shuffle(negative)
     # randperm = ops.Randperm(negative.numel(), dtype=ms.int32)
     # bg_perm = randperm(ms.Tensor((negative.numel(),), dtype=ms.int32))
@@ -188,24 +195,28 @@ def subsample_labels(labels,
     # bg_perm = paddle.slice(bg_perm, axes=[0], starts=[0], ends=[bg_num])
     bg_perm = ops.slice(bg_perm, (0,), (bg_num,))
     if use_random:
-        bg_inds = negative.gather(bg_perm, axis=0)
-    else:
+        # bg_inds = negative.gather(bg_perm, axis=0)
+        negative = ops.shuffle(negative)
+        # bg_inds = ops.slice(negative, (0,), (bg_num,))
+    # else:
         # bg_inds = paddle.slice(negative, axes=[0], starts=[0], ends=[bg_num])  # TODO: finish slice later
-        bg_inds = ops.slice(negative, (0,), (bg_num,))
+    bg_inds = ops.slice(negative, (0,), (bg_num,))
+
     if fg_num == 0:
-        fg_inds = ops.zeros((0,), dtype=ms.int32)
+        fg_inds = ops.zeros((0,), ms.int32)
         return fg_inds, bg_inds
 
-    positive = ms.Tensor(positive, dtype=ms.int32).flatten()
-    fg_perm = ops.shuffle(positive)
+    positive = cast(positive, ms.int32).flatten()
+    # fg_perm = ops.shuffle(positive)
     # fg_perm = ops.Randperm(positive.numel(), dtype=ms.int32)
     # fg_perm = paddle.slice(fg_perm, axes=[0], starts=[0], ends=[fg_num])  # TODO: finish slice later
-    fg_perm = ops.slice(fg_perm, (0,), (fg_num,))
+    # fg_perm = ops.slice(fg_perm, (0,), (fg_num,))
     if use_random:
-        fg_inds = positive.gather(fg_perm, axis=0)
-    else:
+        positive = ops.shuffle(positive)
+        # fg_inds = ops.slice(positive, (0,), (fg_num,))
+    # else:
         # fg_inds = paddle.slice(positive, axes=[0], starts=[0], ends=[fg_num])  # TODO: finish slice later
-        fg_inds = ops.slice(positive, (0,), (fg_num,))
+    fg_inds = ops.slice(positive, (0,), (fg_num,))
 
     return fg_inds, bg_inds
 
@@ -229,16 +240,16 @@ def bbox_overlaps(boxes1, boxes2):
     area2 = bbox_area(boxes2)
 
     xy_max = ops.minimum(
-        ops.unsqueeze(boxes1, 1)[:, :, 2:], boxes2[:, 2:])
+        ops.expand_dims(boxes1, 1)[:, :, 2:], boxes2[:, 2:])
     xy_min = ops.maximum(
-        ops.unsqueeze(boxes1, 1)[:, :, :2], boxes2[:, :2])
+        ops.expand_dims(boxes1, 1)[:, :, :2], boxes2[:, :2])
     width_height = xy_max - xy_min
-    width_height = width_height.clip(min=0)
+    width_height = width_height.clip(xmin=0, xmax=None)
     inter = width_height.prod(axis=2)
 
-    overlaps = ops.where(inter > 0, inter /
-                         (ops.unsqueeze(area1, 1) + area2 - inter),
-                         ops.zeros_like(inter))
+    overlaps = ms.numpy.where(inter > 0, inter /
+                              (ops.expand_dims(area1, 1) + area2 - inter),
+                              ops.zeros_like(inter))
     return overlaps
 
 
@@ -279,7 +290,7 @@ def generate_proposal_target(rpn_rois,
 
         # Concat RoIs and gt boxes except cascade rcnn or none gt
         if add_gt_as_proposals and gt_bbox.shape[0] > 0:
-            bbox = ops.cat([rpn_roi, gt_bbox])
+            bbox = ops.concat([rpn_roi, gt_bbox])
         else:
             bbox = rpn_roi
 
@@ -311,5 +322,5 @@ def generate_proposal_target(rpn_rois,
         rois_with_gt.append(rois_per_image)
         tgt_gt_inds.append(sampled_gt_ind)
         new_rois_num.append(ms.Tensor((sampled_inds.shape[0],), dtype=ms.int32))
-    new_rois_num = ops.cat(new_rois_num)
+    new_rois_num = ops.concat(new_rois_num)
     return rois_with_gt, tgt_labels, tgt_bboxes, tgt_gt_inds, new_rois_num
