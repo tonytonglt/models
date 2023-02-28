@@ -60,22 +60,27 @@ class BboxHead(nn.Cell):
         inputs (dict{Tensor}): The ground-truth of image
         """
         if self.training:
+            '''bbox_assigner w/o use_random ok!'''
             rois, rois_num, targets = self.bbox_assigner(rois, rois_num, inputs)  # TODO: construct bbox_assigner object as in line 27
             self.assigned_rois = (rois, rois_num)
             self.assigned_targets = targets
 
         body_feats = [body_feats]
 
+        '''test roi_extractor(roialign): 
+        paddle use params sampling_ratio=2, aligned=False &
+        mindspore use sample_num=2, roi_end_mode=0 ok'''
         rois_feat = self.roi_extractor(body_feats, rois, rois_num)  # body feats need to be list
 
-        rois_feat = ops.ones((512, 1024, 14, 14), ms.float32)
-
+        '''test self.head:
+        ok, all bn - use_batch_statistics = False'''
         bbox_feat = self.head(rois_feat)
 
-
+        '''test avgpool2d & bbox_score/bbox_delta: ok
+        adaptiveavgpool2d not tested yet'''
         if self.with_pool:
-            pool = nn.AdaptiveAvgPool2d(output_size=1)  # only supported on GPU, use avgpool for testing
-            # pool = nn.AvgPool2d(kernel_size=7, stride=1)
+            # pool = nn.AdaptiveAvgPool2d(output_size=1)  # only supported on GPU, use avgpool for testing
+            pool = nn.AvgPool2d(kernel_size=7, stride=1)
             feat = pool(bbox_feat)
             feat = feat.squeeze(axis=(2, 3))
         else:
@@ -83,6 +88,7 @@ class BboxHead(nn.Cell):
         scores = self.bbox_score(feat)
         deltas = self.bbox_delta(feat)
 
+        '''test get_loss result: ok'''
         if self.training:
             loss = self.get_loss(
                 scores,

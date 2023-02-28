@@ -33,6 +33,7 @@ class RPNFeat(nn.Cell):
         # self.rpn_conv.skip_quant = True  # figure out what is skip_quant? 跳过量化？
 
     def construct(self, feats):
+
         rpn_feats = []
         for feat in feats:
             rpn_feats.append(self.relu(self.rpn_conv(feat)))
@@ -108,21 +109,26 @@ class RPNHead(nn.Cell):
         return {'in_channel': input_shape.channels}
 
     def construct(self, feats, inputs):
+        '''rpn_feats ok'''
         feats = [feats]
         rpn_feats = self.rpn_feat(feats)
         scores = []
         deltas = []
 
         for rpn_feat in rpn_feats:
+            '''scores/deltas ok'''
             rrs = self.rpn_rois_score(rpn_feat)
             rrd = self.rpn_rois_delta(rpn_feat)
             scores.append(rrs)
             deltas.append(rrd)
 
+        '''anchors ok'''
         anchors = self.anchor_generator(rpn_feats)
 
+        '''rois ok: rois 443 & 443'''
         rois, rois_num = self._gen_proposal(scores, deltas, anchors, inputs)
         if self.training:
+            '''loss_rpn_cls: 有些许误差(use random), loss_rpn_reg完全相同'''
             loss = self.get_loss(scores, deltas, anchors, inputs)
             return rois, rois_num, loss
         else:
@@ -217,6 +223,7 @@ class RPNHead(nn.Cell):
         ]
         deltas = ops.concat(deltas, axis=1)
 
+        '''rpn_target_assign ok w/o random'''
         score_tgt, bbox_tgt, loc_tgt, norm = self.rpn_target_assign(inputs,
                                                                     anchors)
 

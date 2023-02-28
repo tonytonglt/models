@@ -59,10 +59,12 @@ class Trainer:
         self.net = net
         # self.loss1 = loss1
         # self.loss2 = loss2
-        self.optimizer = nn.Adam(self.net.trainable_params())
+        self.optimizer = nn.Momentum(params=self.net.trainable_params(),
+                                     learning_rate=0.001,
+                                     momentum=0.9)
         self.train_dataset = train_dataset
         # self.train_data_size = self.train_dataset.get_dataset_size()    # 获取训练集batch数
-        self.train_data_size = 10000
+        self.train_data_size = 117266
         self.weights = self.optimizer.parameters
         # 注意value_and_grad的第一个参数需要是需要做梯度求导的图，一般包含网络和loss。这里可以是一个函数，也可以是Cell
         self.value_and_grad = ops.value_and_grad(self.forward_fn, None, weights=self.weights, has_aux=True)
@@ -87,17 +89,14 @@ class Trainer:
 
     def forward_fn(self, inputs):
         """正向网络构建，注意第一个输出必须是最后需要求梯度的那个输出"""
-        # inputs_dict = {}
         inputs['image'] = inputs['image'].asnumpy()
         inputs['w'] = inputs['w'].asnumpy()
         inputs['h'] = inputs['h'].asnumpy()
         inputs['gt_bbox'] = inputs['gt_bbox'].asnumpy()
         inputs['gt_class'] = inputs['gt_class'].asnumpy()
+
         rpn_loss, bbox_loss = self.net(inputs)
-        # loss1 = self.loss1(logits, labels)
-        # loss2 = self.loss2(logits, labels)
-        # loss1 = self.net.rpn_head.get_loss(pred_scores, pred_deltas, anchors, inputs)
-        # loss2 = self.net.bbox_head.get_loss()
+
         loss_rpn_cls = rpn_loss['loss_rpn_cls']
         loss_rpn_reg = rpn_loss['loss_rpn_reg']
         loss_bbox_cls = bbox_loss['loss_bbox_cls']
@@ -115,10 +114,14 @@ class Trainer:
         # rpn_loss, bbox_loss = self.net(inputs)
         # inputs = list(inputs.values())
         inputs['image'] = ms.Tensor(inputs['image'], dtype=ms.int32)
-        inputs['w'] = ms.Tensor(inputs['w'], dtype=ms.float32)
-        inputs['h'] = ms.Tensor(inputs['h'], dtype=ms.float32)
+        inputs['h'] = ms.Tensor(inputs['ori_shape'][0][0], dtype=ms.float32)
+        inputs['w'] = ms.Tensor(inputs['ori_shape'][0][1], dtype=ms.float32)
         inputs['gt_bbox'] = ms.Tensor(inputs['gt_bbox'], dtype=ms.float32)
         inputs['gt_class'] = ms.Tensor(inputs['gt_class'], dtype=ms.int32)
+
+        del inputs['batch_idx']
+        del inputs['im_file']
+        del inputs['ori_shape']
 
         (loss, loss_rpn_cls, loss_rpn_reg, loss_bbox_cls, loss_bbox_reg), grads = self.value_and_grad(inputs)
         loss = self.loss_scale.unscale(loss)
@@ -160,15 +163,13 @@ class Trainer:
                 self.net.set_train(True)
 
 
-
-
 def train():
     faster_rcnn = build_fasterrcnn_model()
     dataloader = build_dataloader()
     trainer = Trainer(faster_rcnn, dataloader)
-    trainer.train(epochs=50)
+    trainer.train(epochs=12)
     print()
 
 if __name__ == '__main__':
-    ms.set_context(mode=ms.PYNATIVE_MODE, pynative_synchronize=True)
+    ms.set_context(mode=ms.PYNATIVE_MODE, pynative_synchronize=True, device_id=0)
     train()

@@ -40,7 +40,7 @@ v5_metric: False
 # Test
 conf_thres: 0.001
 iou_thres: 0.65
-task: 'val'
+task: 'val' # train or val modify here
 augment: False
 verbose: False
 save_txt: False

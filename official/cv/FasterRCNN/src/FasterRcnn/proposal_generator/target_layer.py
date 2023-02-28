@@ -135,7 +135,7 @@ class BBoxAssigner(object):
                  stage=0,
                  is_cascade=False,
                  add_gt_as_proposals=True):
-        gt_classes = ms.Tensor(inputs['gt_class'], dtype=ms.float32)
+        gt_classes = ms.Tensor(inputs['gt_class'], dtype=ms.int32)
         gt_boxes = ms.Tensor(inputs['gt_bbox'], dtype=ms.float32)
         is_crowd = inputs.get('is_crowd', None)
         # rois, tgt_labels, tgt_bboxes, tgt_gt_inds

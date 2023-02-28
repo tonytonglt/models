@@ -22,12 +22,14 @@ def rpn_anchor_target(anchors,
         gt_bbox = gt_boxes[i]
         is_crowd_i = is_crowd[i] if is_crowd else None
         # Step1: match anchor and gt_bbox
+        '''label_box ok'''
         matches, match_labels = label_box(
             anchors, gt_bbox, rpn_positive_overlap, rpn_negative_overlap, True,
             ignore_thresh, is_crowd_i, assign_on_cpu)
         # Step2: sample anchor
+        '''subsample_labels ok but slightly difference with use_random'''
         fg_inds, bg_inds = subsample_labels(match_labels, rpn_batch_size_per_im,
-                                            rpn_fg_fraction, 0, use_random)
+                                            rpn_fg_fraction, 0, use_random=False)
         # Fill with the ignore label (-1), then set positive and negative labels
         labels = ms.numpy.full(match_labels.shape, -1, dtype=ms.int32)
         if bg_inds.shape[0] > 0:
@@ -188,18 +190,18 @@ def subsample_labels(labels,
     cast = ops.Cast()
     negative = cast(negative, ms.int32).flatten()
     # negative = ms.Tensor(negative, dtype=ms.int32).flatten()
-    bg_perm = ops.shuffle(negative)
+    # bg_perm = ops.shuffle(negative)
     # randperm = ops.Randperm(negative.numel(), dtype=ms.int32)
     # bg_perm = randperm(ms.Tensor((negative.numel(),), dtype=ms.int32))
     # TODO: finish slice later
     # bg_perm = paddle.slice(bg_perm, axes=[0], starts=[0], ends=[bg_num])
-    bg_perm = ops.slice(bg_perm, (0,), (bg_num,))
+    # bg_perm = ops.slice(bg_perm, (0,), (bg_num,))
     if use_random:
         # bg_inds = negative.gather(bg_perm, axis=0)
         negative = ops.shuffle(negative)
         # bg_inds = ops.slice(negative, (0,), (bg_num,))
     # else:
-        # bg_inds = paddle.slice(negative, axes=[0], starts=[0], ends=[bg_num])  # TODO: finish slice later
+        # bg_inds = paddle.slice(negative, axes=[0], starts=[0], ends=[bg_num])
     bg_inds = ops.slice(negative, (0,), (bg_num,))
 
     if fg_num == 0:
@@ -209,13 +211,13 @@ def subsample_labels(labels,
     positive = cast(positive, ms.int32).flatten()
     # fg_perm = ops.shuffle(positive)
     # fg_perm = ops.Randperm(positive.numel(), dtype=ms.int32)
-    # fg_perm = paddle.slice(fg_perm, axes=[0], starts=[0], ends=[fg_num])  # TODO: finish slice later
+    # fg_perm = paddle.slice(fg_perm, axes=[0], starts=[0], ends=[fg_num])
     # fg_perm = ops.slice(fg_perm, (0,), (fg_num,))
     if use_random:
         positive = ops.shuffle(positive)
         # fg_inds = ops.slice(positive, (0,), (fg_num,))
     # else:
-        # fg_inds = paddle.slice(positive, axes=[0], starts=[0], ends=[fg_num])  # TODO: finish slice later
+        # fg_inds = paddle.slice(positive, axes=[0], starts=[0], ends=[fg_num])
     fg_inds = ops.slice(positive, (0,), (fg_num,))
 
     return fg_inds, bg_inds
@@ -299,9 +301,10 @@ def generate_proposal_target(rpn_rois,
                                           False, ignore_thresh, is_crowd_i,
                                           assign_on_cpu)
         # Step2: sample bbox
+        '''sample bbox ok if use_random set to False'''
         sampled_inds, sampled_gt_classes = sample_bbox(
             matches, match_labels, gt_class, batch_size_per_im, fg_fraction,
-            num_classes, use_random, is_cascade)
+            num_classes, False, is_cascade)
 
         # Step3: make output
         rois_per_image = bbox if is_cascade else bbox.gather(sampled_inds, axis=0)

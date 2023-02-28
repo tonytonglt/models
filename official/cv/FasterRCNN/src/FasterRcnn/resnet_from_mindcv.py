@@ -69,11 +69,11 @@ class BasicBlock(nn.Cell):
 
         self.conv1 = nn.Conv2d(in_channels, channels, kernel_size=3,
                                stride=stride, padding=1, pad_mode='pad')
-        self.bn1 = norm(channels)
+        self.bn1 = norm(channels, use_batch_statistics=False)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(channels, channels, kernel_size=3,
                                stride=1, padding=1, pad_mode='pad')
-        self.bn2 = norm(channels)
+        self.bn2 = norm(channels, use_batch_statistics=False)
         self.down_sample = down_sample
 
     def construct(self, x: Tensor) -> Tensor:
@@ -118,13 +118,13 @@ class Bottleneck(nn.Cell):
         width = int(channels * (base_width / 64.0)) * groups
 
         self.conv1 = nn.Conv2d(in_channels, width, kernel_size=1, stride=1)
-        self.bn1 = norm(width)
+        self.bn1 = norm(width, use_batch_statistics=False)
         self.conv2 = nn.Conv2d(width, width, kernel_size=3, stride=stride,
                                padding=1, pad_mode='pad', group=groups)
-        self.bn2 = norm(width)
+        self.bn2 = norm(width, use_batch_statistics=False)
         self.conv3 = nn.Conv2d(width, channels * self.expansion,
                                kernel_size=1, stride=1)
-        self.bn3 = norm(channels * self.expansion)
+        self.bn3 = norm(channels * self.expansion, use_batch_statistics=False)
         self.relu = nn.ReLU()
         self.down_sample = down_sample
 
@@ -372,6 +372,7 @@ class ResNet50ForFasterrcnn(nn.Cell):
         # x = self.forward_head(x)
         return x
 
+
 class Res5Head(nn.Cell):
     def __init__(self, depth):
         super(Res5Head, self).__init__()
@@ -383,7 +384,6 @@ class Res5Head(nn.Cell):
         self.base_with = 64
         block = Bottleneck if depth >= 50 else BasicBlock
         self.res5 = self._make_layer(block, channels, block_nums=3, stride=2)
-
 
     def _make_layer(self,
                     block: Type[Union[BasicBlock, Bottleneck]],
@@ -397,7 +397,7 @@ class Res5Head(nn.Cell):
         if stride != 1 or self.input_channels != channels * block.expansion:
             down_sample = nn.SequentialCell([
                 nn.Conv2d(self.input_channels, channels * block.expansion, kernel_size=1, stride=stride),
-                self.norm(channels * block.expansion)
+                self.norm(channels * block.expansion, use_batch_statistics=False)
             ])
 
         layers = []
@@ -433,13 +433,15 @@ class Res5Head(nn.Cell):
 
 
 def mindspore_params(network):
+    li = []
     ms_params = {}
     for param in network.get_parameters():
         name = param.name
         value = param.data.asnumpy()
-        print(name, value.shape)
+        # print(name, value.shape, value)
         ms_params[name] = value
-    return ms_params
+        li.append((name, value.shape, value))
+    return li
 
 
 def build_resnet50_for_fasterrcnn():
@@ -452,8 +454,13 @@ if __name__ == '__main__':
     # print(res5head)
     # print(model)
 
-    model = build_resnet50_for_fasterrcnn()
-    ms_params = mindspore_params(model)
+    backbone = build_resnet50_for_fasterrcnn().set_train(False)
+    import mindspore as ms
+    from mindspore import ops
+    ms.load_checkpoint('C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.backbone.ckpt', backbone)
+    dummy_input = ops.ones((1, 3, 1078, 800), type=ms.float32)
+    result = backbone(dummy_input)
+    ms_params = mindspore_params(backbone)
     print()
 
 

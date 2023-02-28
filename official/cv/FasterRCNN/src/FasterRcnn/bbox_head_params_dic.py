@@ -1,4 +1,4 @@
-param_dic = {
+bbox_head_param_dic = {
     'bbox_head.head.res5.res5a.short.conv.weight': 'bbox_head.head.res5.0.down_sample.0.weight',
     'bbox_head.head.res5.res5a.short.norm.weight': 'bbox_head.head.res5.0.down_sample.1.gamma',
     'bbox_head.head.res5.res5a.short.norm.bias': 'bbox_head.head.res5.0.down_sample.1.beta',

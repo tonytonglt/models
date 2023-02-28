@@ -98,6 +98,8 @@ class AnchorGenerator(nn.Cell):
     def construct(self, input):
         grid_sizes = [feature_map.shape[-2:] for feature_map in input]
         anchors_over_all_feature_maps = self._grid_anchors(grid_sizes)
+        if (anchors_over_all_feature_maps[0][0].asnumpy() == [0, 0, 0, 0]).all():
+            print()
         return anchors_over_all_feature_maps
 
     @property

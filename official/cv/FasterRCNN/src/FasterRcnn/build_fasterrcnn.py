@@ -35,17 +35,18 @@ class FasterRCNN(nn.Cell):
     def construct(self, inputs):
         self.inputs = inputs
         image_tensor = ms.Tensor(self.inputs['image'], dtype=ms.float32)
-        image_tensor = ops.transpose(image_tensor, (0, 3, 1, 2))
+        # image_tensor = ops.transpose(image_tensor, (0, 3, 1, 2))
+        # image_tensor = self.inputs['image']
         body_feats = self.backbone(image_tensor)
         if self.neck is not None:
             body_feats = self.neck(body_feats)
         if self.training:
-            body_feats = ops.ones((1, 1024, 40, 37), type=ms.float32)
-            self.input['image'] = np.ones((1, 640, 586, 3), dtype=np.int32)
-            self.inputs['w'] = np.array([640], dtype=np.float32)
-            self.inputs['h'] = np.array([586], dtype=np.float32)
-            self.inputs['gt_bbox'] = np.array([[[378.32, 142.51, 403.02, 212.01]]], dtype=np.float32)
-            self.inputs['gt_class'] = np.array([[[21]]], dtype=np.int32)
+            body_feats = ms.Tensor(np.load('C:\\tongli\\input_1\\body_feats.npz')['arr_0'], ms.float32)
+            self.inputs['image'] = np.load('C:\\tongli\\input_1\\inputs_image.npz')['arr_0']
+            self.inputs['gt_bbox'] = ms.Tensor(np.load('C:\\tongli\\input_1\\inputs_gt_bbox.npz')['arr_0'], ms.float32).reshape(1, 1, 4)
+            self.inputs['gt_class'] = ms.Tensor(np.load('C:\\tongli\\input_1\\inputs_gt_class.npz')['arr_0'], ms.float32).reshape(1, 1, 1)
+            self.inputs['h'] = np.array(1078, np.float32)
+            self.inputs['w'] = np.array(800, np.float32)
 
             rois, rois_num, rpn_loss = self.rpn_head(body_feats, self.inputs)
             bbox_loss, _ = self.bbox_head(body_feats, rois, rois_num,
@@ -80,32 +81,11 @@ class FasterRCNN(nn.Cell):
         return output
 
 
-def mindspore_params(network):
-    ms_params = {}
-    for param in network.get_parameters():
-        name = param.name
-        value = param.data.asnumpy()
-        print(name, value.shape)
-        ms_params[name] = value
-    return ms_params
-
-def paddle_params(pdparams_file):
-    par_dict = paddle.load(pdparams_file)
-    pd_params = {}
-    for name in par_dict:
-        parameter = par_dict[name]
-        print(name, parameter.numpy().shape)
-        pd_params[name] = parameter.numpy()
-    return pd_params
-#
-# if __name__ == '__main__':
-#     pt_params = pytorch_params('C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.pdparams')
-#     print()
-
-
 def build_fasterrcnn_model(training=True):
     # backbone = mindcv.create_model('resnet50', pretrained=False)
     backbone = build_resnet50_for_fasterrcnn()
+    ms.load_checkpoint('C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.backbone.ckpt'
+                       , backbone)
     rpn_head = RPNHead()
     ms.load_checkpoint('C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.rpnhead.ckpt'
                        , rpn_head)
@@ -117,18 +97,3 @@ def build_fasterrcnn_model(training=True):
     fasterrcnn = FasterRCNN(backbone, rpn_head, bbox_head, training=training)
     return fasterrcnn
 
-
-if __name__ == '__main__':
-    # backbone = mindcv.create_model('resnet50', pretrained=False)
-    # rpn_head = RPNHead()
-    # bbox_assigner = BBoxAssigner()
-    # head = Res5Head(depth=50)
-    # bbox_head = BboxHead(head=head, bbox_assigner=bbox_assigner, in_channel=2048)
-
-    # fasterrcnn = FasterRCNN(backbone, rpn_head, bbox_head, None)
-
-    fasterrcnn = build_fasterrcnn_model()
-    pd_params = paddle_params('C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.pdparams')
-    print('='*40)
-    ms_param = mindspore_params(fasterrcnn)
-    print()

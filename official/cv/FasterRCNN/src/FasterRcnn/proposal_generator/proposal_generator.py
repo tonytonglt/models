@@ -184,7 +184,7 @@ class ProposalGenerator(object):
             # filter empty boxes
             keep = boxes.nonempty(threshold=min_box_size)  # TODO: attention!!!! 可能会有全部为0的情况
             if keep.sum() != len(boxes):
-                # print(boxes.tensor.asnumpy()[keep.asnumpy()])
+                print(boxes.tensor.asnumpy()[keep.asnumpy()])
                 if boxes.tensor.asnumpy()[keep.asnumpy()] == []:
                     print()
                 boxes.tensor = ms.Tensor(boxes.tensor.asnumpy()[keep.asnumpy()], dtype=ms.float32)

@@ -8,6 +8,7 @@ from src.FasterRcnn.proposal_generator.target_layer import BBoxAssigner
 from src.FasterRcnn.bbox_postprocess import BBoxPostProcess
 from src.FasterRcnn.bbox_utils import multiclass_nms
 from src.FasterRcnn.bbox_utils import RCNNBox
+from src.FasterRcnn.build_fasterrcnn import FasterRCNN
 
 
 def mindspore_params(network):
@@ -15,9 +16,9 @@ def mindspore_params(network):
     for param in network.get_parameters():
         name = param.name
         value = param.data.asnumpy()
-        print(name, value.shape)
+        print(name, value.shape, value)
         ms_params[name] = value
-    return ms_params
+    # return ms_params
 
 
 if __name__ == '__main__':
@@ -33,7 +34,7 @@ if __name__ == '__main__':
     bbox_head = BboxHead(head=head, bbox_assigner=bbox_assigner, in_channel=2048, with_pool=True).set_train(False)
     ms.load_checkpoint('C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.bboxhead.ckpt'
                        , bbox_head)
-
+    # mindspore_params(bbox_head)
     """construct bbox postprocessing"""
     rcnnbox = RCNNBox()
     bbox_postprocessing = BBoxPostProcess(decode=rcnnbox, nms=multiclass_nms)
