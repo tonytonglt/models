@@ -8,7 +8,10 @@ from src.FasterRcnn.proposal_generator.rpn_head import RPNHead
 from src.FasterRcnn.proposal_generator.target_layer import BBoxAssigner
 from src.FasterRcnn.resnet_from_mindcv import Res5Head
 from src.FasterRcnn.build_fasterrcnn import FasterRCNN
-from src.FasterRcnn.bbox_head_params_dic import param_dic
+from src.FasterRcnn.bbox_head_params_dic import bbox_head_param_dic
+from src.FasterRcnn.backbone_params_dic import backbone_param_dic
+from src.FasterRcnn.resnet_from_mindcv import build_resnet50_for_fasterrcnn
+from src.FasterRcnn.resnet_from_mindcv import ResNet50ForFasterrcnn
 from src.FasterRcnn.build_fasterrcnn import build_fasterrcnn_model
 
 
@@ -82,7 +85,7 @@ def rpnhead_param_convert(ms_params, pt_params, ckpt_path):
 def bboxhead_param_convert(ms_params, pt_params, ckpt_path):
     print("=========================== start converting bboxhead ===========================")
     new_params_list = []
-    param_dict = exchange_dict_keys_values(param_dic)
+    param_dict = exchange_dict_keys_values(bbox_head_param_dic)
     for ms_param in ms_params.keys():
         if ms_param in param_dict.keys():  # and pt_params[param_dict[ms_param]].shape == ms_params[ms_param].shape:
             print(ms_param)
@@ -92,6 +95,21 @@ def bboxhead_param_convert(ms_params, pt_params, ckpt_path):
             else:
                 new_params_list.append({"name": ms_param, "data": ms.Tensor(ms_value)})  # dense 需要transpose
     new_ckpt_path = 'C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.bboxhead.ckpt'
+    ms.save_checkpoint(new_params_list, new_ckpt_path)
+
+def backbone_param_convert(ms_params, pt_params):
+    print("=========================== start converting backbone ===========================")
+    param_dict = exchange_dict_keys_values(backbone_param_dic)
+    new_params_list = []
+    for ms_param in param_dict.keys():
+        if 'backbone' in ms_param:
+            if ms_params[ms_param].shape == pt_params[param_dict[ms_param]].shape:
+                print(ms_param, 'ok')
+                ms_value = pt_params[param_dict[ms_param]]
+                new_params_list.append({"name": ms_param, "data": ms.Tensor(ms_value)})
+            else:
+                print(ms_param, 'not ok!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+    new_ckpt_path = 'C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.backbone.ckpt'
     ms.save_checkpoint(new_params_list, new_ckpt_path)
 
 def exchange_dict_keys_values(x):
@@ -112,6 +130,8 @@ if __name__ == '__main__':
 
     fasterrcnn = build_fasterrcnn_model()
 
+    # resnet50_for_fasterrcnn = build_resnet50_for_fasterrcnn()
+
     ckpt_path = 'C:\\tongli\\02workspace\\PaddleDetection\\weights\\faster_rcnn_r50_1x_coco.pdparams'
 
 
@@ -120,6 +140,6 @@ if __name__ == '__main__':
     ms_params = mindspore_params(fasterrcnn)
 
     print()
-
+    backbone_param_convert(ms_params, pd_params)
     # rpnhead_param_convert(ms_params, pd_params, ckpt_path)
     # bboxhead_param_convert(ms_params, pd_params, ckpt_path)
