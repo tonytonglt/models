@@ -54,7 +54,7 @@ def parse_config():
                              cfg_path=args_config.config)
     final_config = merge(args=args, cfg=default)
     print("parse_config:")
-    pprint(final_config)
+    # pprint(final_config)
     print("Please check the above information for the configurations", flush=True)
     return Config(final_config)
 

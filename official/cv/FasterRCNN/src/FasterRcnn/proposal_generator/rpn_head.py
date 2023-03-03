@@ -246,19 +246,31 @@ class RPNHead(nn.Cell):
 
         # cls loss
         if valid_ind.shape[0] == 0:
-            loss_rpn_cls = ops.zeros((1, ), dtype=ms.float32)
+            loss_rpn_cls = ms.Tensor(0, ms.float32)
         else:
-            score_pred = scores.gather(valid_ind, axis=0)
-            score_label = ops.cast(score_tgt.gather(valid_ind, axis=0), ms.float32)
+            '''dynamic shape'''
+            # score_pred = scores.gather(valid_ind, axis=0)
+            # score_label = ops.cast(score_tgt.gather(valid_ind, axis=0), ms.float32)
+            # score_label = ops.stop_gradient(score_label)
+            # weight = ops.ones(score_pred.shape, ms.float32)
+            # pos_weight = ops.ones(score_pred.shape, ms.float32)
+            # loss_rpn_cls = ops.binary_cross_entropy_with_logits(
+            #     logits=score_pred, label=score_label, weight=weight, pos_weight=pos_weight, reduction="sum")
+
+            '''avoid using dynamic shape, except gather'''
+            score_pred = scores
+            score_label = ops.cast(score_tgt, ms.float32)
             score_label = ops.stop_gradient(score_label)
             weight = ops.ones(score_pred.shape, ms.float32)
             pos_weight = ops.ones(score_pred.shape, ms.float32)
             loss_rpn_cls = ops.binary_cross_entropy_with_logits(
                 logits=score_pred, label=score_label, weight=weight, pos_weight=pos_weight, reduction="sum")
+            loss_rpn_cls = loss_rpn_cls.gather(valid_ind, axis=1)
+            loss_rpn_cls = loss_rpn_cls.sum()
 
         # reg loss
         if pos_ind.shape[0] == 0:
-            loss_rpn_reg = ops.zeros((1, ), ms.float32)
+            loss_rpn_reg = ms.Tensor(0, ms.float32)
         else:
             loc_pred = deltas.gather(pos_ind, axis=0)
             loc_tgt = ops.concat(loc_tgt)

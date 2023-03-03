@@ -57,8 +57,6 @@ class Trainer:
     """一个有两个loss的训练示例"""
     def __init__(self, net, train_dataset, loss_scale=1.0, eval_dataset=None, metric=None):
         self.net = net
-        # self.loss1 = loss1
-        # self.loss2 = loss2
         self.optimizer = nn.Momentum(params=self.net.trainable_params(),
                                      learning_rate=0.001,
                                      weight_decay=0.0001,
@@ -97,10 +95,6 @@ class Trainer:
         loss_rpn_reg = rpn_loss['loss_rpn_reg']
         loss_bbox_cls = bbox_loss['loss_bbox_cls']
         loss_bbox_reg = bbox_loss['loss_bbox_reg']
-        if bbox_loss['loss_bbox_reg'].shape == (1,):
-            loss_bbox_reg = loss_bbox_reg.item()
-        if rpn_loss['loss_rpn_reg'].shape == (1,):
-            loss_rpn_reg = loss_rpn_reg.item()
         loss = loss_rpn_cls + loss_rpn_reg + loss_bbox_cls + loss_bbox_reg
         # loss = self.loss_scale.scale(loss)
         return loss, loss_rpn_cls, loss_rpn_reg, loss_bbox_cls, loss_bbox_reg

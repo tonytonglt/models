@@ -128,7 +128,7 @@ class BboxHead(nn.Cell):
             tgt_labels) > 1 else tgt_labels[0]
         valid_inds = ops.nonzero(tgt_labels >= 0).flatten()
         if valid_inds.shape[0] == 0:
-            loss_bbox[cls_name] = ops.zeros(1, dtype=ms.float32)
+            loss_bbox[cls_name] = ms.Tensor(0, ms.float32)
         else:
             tgt_labels = ops.cast(tgt_labels, ms.int32)  # target 数据类型仅支持int32
             tgt_labels = ops.stop_gradient(tgt_labels)
@@ -151,7 +151,7 @@ class BboxHead(nn.Cell):
                             self.num_classes))
 
         if fg_inds.numel() == 0:
-            loss_bbox[reg_name] = ops.zeros(1, ms.float32)
+            loss_bbox[reg_name] = ms.Tensor(0, ms.float32)
             return loss_bbox
 
         fg_inds = fg_inds.flatten()
