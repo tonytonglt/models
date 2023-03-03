@@ -143,7 +143,8 @@ class RPNHead(nn.Cell):
         """
         prop_gen = self.train_proposal if self.training else self.test_proposal
         # im_shape = inputs['im_shape']
-        im_shape = ms.Tensor([[inputs['h'].item(), inputs['w'].item()]], dtype=ms.float32)
+        # im_shape = ms.Tensor([[inputs['h'].item(), inputs['w'].item()]], dtype=ms.float32)
+        im_shape = ms.Tensor(inputs['image'].shape[-2:], ms.float32).reshape(-1, 2)
 
         # Collect multi-level proposals for each batch
         # Get 'topk' of them as final output

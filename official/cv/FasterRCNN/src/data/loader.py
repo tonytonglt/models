@@ -60,7 +60,7 @@ def build_dataloader():
     ds = create_dataloader(data_config=config.data,
                            task='val',
                            per_batch_size=config.per_batch_size)
-    data_loader = ds.create_dict_iterator(output_numpy=True, num_epochs=1)
+    data_loader = ds.create_dict_iterator(output_numpy=False, num_epochs=1)
     print('done')
     return data_loader
 

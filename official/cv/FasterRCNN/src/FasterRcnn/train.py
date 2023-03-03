@@ -91,12 +91,6 @@ class Trainer:
 
     def forward_fn(self, inputs):
         """正向网络构建，注意第一个输出必须是最后需要求梯度的那个输出"""
-        inputs['image'] = inputs['image'].asnumpy()
-        inputs['w'] = inputs['w'].asnumpy()
-        inputs['h'] = inputs['h'].asnumpy()
-        inputs['gt_bbox'] = inputs['gt_bbox'].asnumpy()
-        inputs['gt_class'] = inputs['gt_class'].asnumpy()
-
         rpn_loss, bbox_loss = self.net(inputs)
 
         loss_rpn_cls = rpn_loss['loss_rpn_cls']
@@ -113,18 +107,6 @@ class Trainer:
 
     # @ms.jit    # jit加速，需要满足图模式构建的要求，否则会报错
     def train_single(self, inputs):
-        # rpn_loss, bbox_loss = self.net(inputs)
-        # inputs = list(inputs.values())
-        inputs['image'] = ms.Tensor(inputs['image'], dtype=ms.int32)
-        inputs['h'] = ms.Tensor(inputs['ori_shape'][0][0], dtype=ms.float32)
-        inputs['w'] = ms.Tensor(inputs['ori_shape'][0][1], dtype=ms.float32)
-        inputs['gt_bbox'] = ms.Tensor(inputs['gt_bbox'], dtype=ms.float32)
-        inputs['gt_class'] = ms.Tensor(inputs['gt_class'], dtype=ms.int32)
-
-        del inputs['batch_idx']
-        del inputs['im_file']
-        del inputs['ori_shape']
-
         (loss, loss_rpn_cls, loss_rpn_reg, loss_bbox_cls, loss_bbox_reg), grads = self.value_and_grad(inputs)
         loss = self.loss_scale.unscale(loss)
         grads = self.loss_scale.unscale(grads)
