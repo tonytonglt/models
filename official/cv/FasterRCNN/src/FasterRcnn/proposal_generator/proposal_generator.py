@@ -153,7 +153,7 @@ class ProposalGenerator(object):
             else:
                 num_proposals_i = min(Hi_Wi_A, pre_nms_topk)
 
-            topk_scores_i, topk_idx = ops.top_k(logits_i, num_proposals_i, dim=1)
+            topk_scores_i, topk_idx = ops.top_k(logits_i, num_proposals_i)
 
             # each is N x topk
             # topk_proposals_i = proposals_i[batch_idx[:, None], topk_idx]  # N x topk x 4
@@ -218,4 +218,4 @@ class ProposalGenerator(object):
             keep_dets_boxes = keep_dets_boxes[:post_nms_topk]  # keep is already sorted
             keep_dets_scores = keep_dets_scores[:post_nms_topk]
             # result = keep
-            return keep_dets_boxes, keep_dets_scores
+        return keep_dets_boxes, keep_dets_scores

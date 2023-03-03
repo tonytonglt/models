@@ -168,6 +168,10 @@ class RPNHead(nn.Cell):
                     bbox_deltas=rpn_delta[i:i + 1],
                     anchors=anchor,
                     im_shape=im_shape[i:i + 1])
+
+                rpn_rois = ops.stop_gradient(rpn_rois)
+                rpn_rois_prob = ops.stop_gradient(rpn_rois_prob)
+
                 rpn_rois_list.append(rpn_rois)
                 rpn_prob_list.append(rpn_rois_prob)
                 rpn_rois_num_list.append(rpn_rois_num)
@@ -244,7 +248,7 @@ class RPNHead(nn.Cell):
             loss_rpn_cls = ops.zeros((1, ), dtype=ms.float32)
         else:
             score_pred = scores.gather(valid_ind, axis=0)
-            score_label = ms.Tensor(score_tgt.gather(valid_ind, axis=0).asnumpy(), dtype=ms.float32)
+            score_label = ops.cast(score_tgt.gather(valid_ind, axis=0), ms.float32)
             score_label = ops.stop_gradient(score_label)
             weight = ops.ones(score_pred.shape, ms.float32)
             pos_weight = ops.ones(score_pred.shape, ms.float32)
@@ -258,7 +262,7 @@ class RPNHead(nn.Cell):
             loc_pred = deltas.gather(pos_ind, axis=0)
             loc_tgt = ops.concat(loc_tgt)
             loc_tgt = loc_tgt.gather(pos_ind, axis=0)
-            ops.stop_gradient(loc_tgt)
+            loc_tgt = ops.stop_gradient(loc_tgt)
 
             if self.loss_rpn_bbox is None:
                 loss_rpn_reg = ops.abs(loc_pred - loc_tgt).sum()

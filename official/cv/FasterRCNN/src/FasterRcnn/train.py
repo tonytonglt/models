@@ -61,6 +61,7 @@ class Trainer:
         # self.loss2 = loss2
         self.optimizer = nn.Momentum(params=self.net.trainable_params(),
                                      learning_rate=0.001,
+                                     weight_decay=0.0001,
                                      momentum=0.9)
         self.train_dataset = train_dataset
         # self.train_data_size = self.train_dataset.get_dataset_size()    # 获取训练集batch数
@@ -68,6 +69,7 @@ class Trainer:
         self.weights = self.optimizer.parameters
         # 注意value_and_grad的第一个参数需要是需要做梯度求导的图，一般包含网络和loss。这里可以是一个函数，也可以是Cell
         self.value_and_grad = ops.value_and_grad(self.forward_fn, None, weights=self.weights, has_aux=True)
+        self.grad = ops.grad(self.forward_fn, None, weights=self.weights, has_aux=True)
 
         # 分布式场景使用
         self.grad_reducer = self.get_grad_reducer()
@@ -103,7 +105,7 @@ class Trainer:
         loss_bbox_reg = bbox_loss['loss_bbox_reg']
         if bbox_loss['loss_bbox_reg'].shape == (1,):
             loss_bbox_reg = loss_bbox_reg.item()
-        if bbox_loss['loss_rpn_reg'].shape == (1,):
+        if rpn_loss['loss_rpn_reg'].shape == (1,):
             loss_rpn_reg = loss_rpn_reg.item()
         loss = loss_rpn_cls + loss_rpn_reg + loss_bbox_cls + loss_bbox_reg
         # loss = self.loss_scale.scale(loss)

@@ -1,4 +1,4 @@
-from . import transforms
+from src.data import transforms
 
 __all__ = ['create_transforms', 'create_per_batch_map']
 

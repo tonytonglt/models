@@ -48,7 +48,7 @@ def create_dataloader(data_config, task, per_batch_size):
                   per_batch_map=per_batch_map)
     ds = ds.repeat(1)
 
-    return ds, dataset
+    return ds
 
 def build_dataloader():
     # from general import show_img_with_bbox, show_img_with_poly
